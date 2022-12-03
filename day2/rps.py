@@ -12,13 +12,16 @@ class RPS(Enum):
     PAPER = 2
     SCISSOR = 3
 
-MAP = {
+MAP_ONE = {
     'A':RPS.ROCK,
     'B':RPS.PAPER,
     'C':RPS.SCISSOR,
+}
+
+MAP_TWO = {
     'X':RPS.ROCK,
     'Y':RPS.PAPER,
-    'Z':RPS.SCISSOR,
+    'Z':RPS.SCISSOR
 }
 
 MAP_SCORE = {
@@ -61,8 +64,8 @@ for line in lines:
     if len(line) != 3:
         raise ValueError("An error occurred")
 
-    player_one = MAP[line[0]]
-    player_two = MAP[line[2]]
+    player_one = MAP_ONE[line[0]]
+    player_two = MAP_TWO[line[2]]
 
     result = get_winner(player_one, player_two)
     if result == 1:
@@ -78,13 +81,6 @@ print(f"score one: {score}")
 
 
 ### SECOND
-
-MAP_ONE = {
-    'A':RPS.ROCK,
-    'B':RPS.PAPER,
-    'C':RPS.SCISSOR
-}
-
 MAP_STRATEGY = {
     'X':-1,
     'Y':0,
