@@ -5,10 +5,8 @@ lines = None
 with open("input.txt") as file:
     lines = [line.strip("\n") for line in file]
 
-# Separate stack lines from instructions
-# An empty linne separates stack description from instructions
-# Last line of stack descriptions is a guide to the position of
-# the content
+# Separate stack description from instructions
+# An empty line separates the stack description from instructions
 pos = 0
 guide = None
 instructions = 0
@@ -29,8 +27,8 @@ for line in stack_lines:
     print(line)
 print("\n")
 
-# Get crates positions in lines usinng guide nnumber position
-# these positions whill be the same on each on the stack lines
+# Get crates positions in lines using guide number position
+# these positions will be the same on each on the stack lines
 pos = 0
 stack_guide = dict()
 for c in guide:
