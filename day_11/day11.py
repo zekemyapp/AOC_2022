@@ -29,11 +29,6 @@ class Monkey():
         self.n_inspections += 1
         new_item = self.operation(item)
         new_item = new_item % reducer
-        # factors = prime_factors(new_item)
-        # new_monkey = self.truer if self.divisor in factors else self.falser
-        # new_number = 1
-        # for n in factors:
-        #     new_number *= n
         new_monkey = self.truer if new_item % self.divisor == 0 else self.falser
         return new_item, new_monkey
 
