@@ -1,4 +1,8 @@
 import numpy as np
+from tqdm import tqdm
+
+N_ROCKS = 2022  # PART ONE
+# N_ROCKS = 1000000000000  # PART TWO
 
 ROCK_1 = [['#', '#', '#', '#']]
 ROCK_2 = [['.', '#', '.'], ['#', '#', '#'], ['.', '#', '.']]
@@ -37,6 +41,9 @@ class Chamber():
 
         self.rock = None
         self.rock_pos = None
+        self.rock_number = 0
+
+        self.saved_height = 0
 
     def print(self):
         for i in range(len(self.grid)):
@@ -71,11 +78,44 @@ class Chamber():
     def add_rock(self, rock):
         self.rock = rock
         self.rock_pos = (0, 2)
-        self.grow_up(len(c_rock)+3)
+
+        piece_size = len(c_rock)+3
+        n_rows, n_cols = self.grid.shape
+
+        # Empty grid, just grow it to needed size
+        if n_rows == 0:
+            self.grow_up(piece_size)
+            return
+
+        # Get highest point in the grid
+        highest = None
+        for i in range(n_rows):
+            for j in range(n_cols):
+                if self.grid[i][j] != ord('.'):
+                    highest = (i, j)
+                    break
+            if highest is not None:
+                    break
+
+        # There are no pieces in the grid
+        if highest is None:
+            needed_space = piece_size - n_rows
+            if needed_space > 0:
+                self.grow_up(needed_space)
+            return
+
+        # add new needed space
+        needed_space = piece_size - highest[0]
+        if needed_space >= 0:
+            self.grow_up(needed_space) 
+        else:
+            # reshape to remove extra space
+            self.grid = self.grid[abs(needed_space):]
+
 
     def rock_move_down(self):
         if self.rock is None:
-            return
+            return False
 
         rock = self.rock
         pos = self.rock_pos
@@ -84,7 +124,7 @@ class Chamber():
         # Check collision with bottom
         if bottom_row_pos+1 >= len(self.grid):
             self.rock_fix()
-            return
+            return False
 
         new_pos = (self.rock_pos[0]+1, self.rock_pos[1])
         new_bottom_row_pos = bottom_row_pos + 1
@@ -102,6 +142,7 @@ class Chamber():
                     return
 
         self.rock_pos = new_pos
+        return True
     
     def rock_move_left(self):
         if self.rock is None:
@@ -153,6 +194,9 @@ class Chamber():
         self.rock_pos = new_pos
 
     def rock_fix(self):
+        if self.rock is None:
+            return
+
         rock = self.rock
         pos = self.rock_pos
         for i in range(len(rock)):
@@ -162,40 +206,77 @@ class Chamber():
 
         self.rock = None
         self.rock_pos = (0, 0)
+        self.rock_number += 1
+
+    def is_rock_empty(self):
+        return (self.rock is None)
+
+    def get_rock_count(self):
+        return self.rock_number
+
+    def get_height(self):
+        n_rows, n_cols = self.grid.shape
+
+        # Empty grid, just grow it to needed size
+        if n_rows == 0:
+            return 0
+
+        highest = None
+        for i in range(n_rows):
+            for j in range(n_cols):
+                if self.grid[i][j] != ord('.'):
+                    highest = (i, j)
+                    break
+            if highest is not None:
+                    break
+        if highest is None:
+            return 0
+        return n_rows - highest[0]
+
+    def optimize(self):
+        self.grid = self.grid[-5:]
+        self.saved_height += 5
 
 rock_counter = RockCounter()
 chamber = Chamber()
 
-# c_rock = rock_counter.next_rock()
-# c_rock = rock_counter.next_rock()
-# c_rock = rock_counter.next_rock()
+with open("sample") as file:
+    lines = [line.strip("\n") for line in file]
 
+line = lines[0]
+pattern_len = len(line)
+print(f"There will be {pattern_len} steps")
 
-# chamber.add_rock(c_rock)
+pbar = tqdm(total=N_ROCKS)
+pattern_step = 0
+while True:
+    _step = pattern_step % pattern_len
+    step = line[_step]
 
-# chamber.add_rock(c_rock)
-# chamber.rock_move_down()
-# chamber.rock_move_down()
-# chamber.rock_move_down()
-# chamber.rock_move_down()
-# chamber.rock_move_left()
-# chamber.rock_move_left()
-# chamber.rock_move_left()
-# chamber.rock_move_right()
-# chamber.rock_move_right()
-# chamber.rock_move_right()
-# chamber.rock_move_right()
-# chamber.rock_fix()
+    # if chamber.get_rock_count() > 0 and (chamber.get_rock_count() % 10) == 0:
+    #     chamber.optimize()
 
+    if chamber.is_rock_empty():
+        # Game is finished
+        if chamber.get_rock_count() == N_ROCKS:
+            break
+        pbar.update(1)
+        c_rock = rock_counter.next_rock()
+        chamber.add_rock(c_rock)
 
-# chamber.grow_up(1)
-# chamber.add_rock(c_rock)
-# chamber.rock_move_left()
-# chamber.rock_move_left()
-# chamber.rock_move_down()
-# chamber.rock_move_down()
-# chamber.rock_move_down()
-# # chamber.rock_fix()
+    # chamber.print_with_rock()
+    # input("")
+    
+    if step == '>':
+        chamber.rock_move_right()
+    elif step == '<':
+        chamber.rock_move_left()
 
-chamber.print_with_rock()
-chamber.print()
+    chamber.rock_move_down()
+
+    pattern_step += 1    
+pbar.close()
+
+height = chamber.get_height()
+# height += chamber.saved_height 
+print(f"Result = {height}")
