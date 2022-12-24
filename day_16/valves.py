@@ -3,6 +3,9 @@ import sys
 import math
 from tqdm import tqdm
 
+MAX_TIME = 30  # PART_ONE
+MAX_TIME = 26  # PART_TWO
+
 class Valve():
     def __init__(self, name, rate):
         self.name = name
@@ -18,6 +21,32 @@ class FrontNode():
         self.time = 0
         self.time_to_reach = 0
 
+class Player():
+    def __init__(self, name, time_to_reach):
+        self.name = name
+        self.time_to_reach = time_to_reach
+
+class FrontNodePachy():
+    def __init__(self, name_a, name_b, parent):
+        self.player_a = Player(name_a, 0)
+        self.player_b = Player(name_b, 0)
+        self.parent = parent
+        self.visited = []
+        self.time_of_visit = []
+        self.time = 0
+
+    def get_closest(self):
+        if self.player_a.time_to_reach <= self.player_b.time_to_reach:
+            return self.player_a
+        else:
+            return self.player_b
+
+    def get_fartest(self):
+        if self.player_a.time_to_reach <= self.player_b.time_to_reach:
+            return self.player_b
+        else:
+            return self.player_a
+
 # Breadth First Search
 class StackFrontier():
     def __init__(self):
@@ -25,9 +54,6 @@ class StackFrontier():
 
     def add(self, node):
         self.frontier.append(node)
-
-    def contains_node(self, name):
-        return any(node.name == name for node in self.frontier)
 
     def empty(self):
         return len(self.frontier) == 0
@@ -41,6 +67,15 @@ class StackFrontier():
         else:
             node = self.frontier[-1]
             self.frontier = self.frontier[:-1]
+            return node
+
+class QueueFrontier(StackFrontier):
+    def remove(self):
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            node = self.frontier[0]
+            self.frontier = self.frontier[1:]
             return node
 
 # Initialize
@@ -138,7 +173,7 @@ def solve():
         # Fetch new node to explore
         node = frontier.remove()
 
-        if (node.time + (node.time_to_reach + 1)) >= 30:
+        if (node.time + (node.time_to_reach + 1)) >= MAX_TIME:
             result = (node.time, node.visited, node.time_of_visit)
             results.append(result)
             continue
@@ -178,21 +213,127 @@ def solve():
             new_node.time_of_visit = time_of_visit
             frontier.add(new_node)
 
-all_results = solve()
-all_outs = []
-for result in all_results:
-    time = result[0]
-    visited = result[1]
-    time_of_visit = result[2]
+def solve_with_elephant():
+    # Init frontier
+    frontier = QueueFrontier()
+    start_node = FrontNodePachy(START_POINT, START_POINT, None)
+    frontier.add(start_node)
 
-    out = 0
-    total_reward = 0
-    for i in range(len(visited)):
-        _valve = visited[i]
-        _time = time_of_visit[i]
-        total_reward += all_valves_with_reward[_valve]
-        out += (30 - _time) * all_valves_with_reward[_valve]
+    best_so_far = 0
 
-    all_outs.append(out)
+    results = []
+    while True:
+        # If nothing is empty, there is no solutionn
+        if frontier.empty():
+            return results 
 
-print(f"PART_ONE = {max(all_outs)}") #1617
+        # Fetch new node to explore
+        node = frontier.remove()
+
+        closest_player = node.get_closest()
+        fartest_player = node.get_fartest()
+        if (node.time + (closest_player.time_to_reach + 1)) >= MAX_TIME:
+            result = (node.time, node.visited, node.time_of_visit)
+            results.append(result)
+            calculate_result(results, True)
+            continue
+
+        # Solve closest and update fartest
+        if closest_player.name == "AA":
+            # Do not count first node
+            time = node.time
+            visited = [v for v in node.visited]
+            time_of_visit = [t for t in node.time_of_visit]
+        else:
+            # Closest reach destination and open valve.
+            # This time is free for the second player to perform actions
+            time = node.time + closest_player.time_to_reach + 1
+            fartest_player.time_to_reach -= closest_player.time_to_reach + 1
+
+            # Copy arrays
+            visited = [v for v in node.visited]
+            time_of_visit = [t for t in node.time_of_visit]
+
+            # Only closest arrived
+            visited.append(closest_player.name)
+            time_of_visit.append(time)
+
+        # Check if it was over after this player reach its destination
+        if len(visited) == len(all_valves_with_reward):
+            result = (time, visited, time_of_visit)
+            results.append(result)
+            calculate_result(results, True)
+            continue
+
+        # #########################
+        # if len(visited) >= (len(all_valves_with_reward) // 2):
+        #     result = (time, visited, time_of_visit)
+        #     test = calculate_result([result])
+        #     if test >= best_so_far:
+        #         best_so_far = test
+        #     else:
+        #         continue
+        # #########################
+
+        # print((time, frontier.size()))
+
+        # Find next possible steps for closest player and reuse fartest
+        added_new_closest = False
+        for valve in all_valves_with_reward:
+            # for each valve find all possible distances
+            if valve in visited or valve == fartest_player.name:
+                continue
+
+            best_distance = all_distances[(closest_player.name, valve)]
+
+            # Add to frontier
+            new_node = FrontNodePachy(valve, fartest_player.name, node)
+            # Global info
+            new_node.time = time
+            new_node.visited = visited
+            new_node.time_of_visit = time_of_visit
+            # Player info
+            new_node.player_a.time_to_reach = best_distance
+            new_node.player_b.time_to_reach = fartest_player.time_to_reach
+            # Add to frontier
+            frontier.add(new_node)
+            added_new_closest = True
+
+        if not added_new_closest:
+            # No more nodes, only fartest left
+            new_node = FrontNodePachy("AA", fartest_player.name, node)
+            # Global info
+            new_node.time = time
+            new_node.visited = visited
+            new_node.time_of_visit = time_of_visit
+            # Player info
+            new_node.player_a.time_to_reach = 99
+            new_node.player_b.time_to_reach = fartest_player.time_to_reach
+            # Add to frontier
+            frontier.add(new_node)
+
+
+
+def calculate_result(all_results, should_print=False):
+    all_outs = []
+    for result in all_results:
+        time = result[0]
+        visited = result[1]
+        time_of_visit = result[2]
+
+        out = 0
+        total_reward = 0
+        for i in range(len(visited)):
+            _valve = visited[i]
+            _time = time_of_visit[i]
+            total_reward += all_valves_with_reward[_valve]
+            out += (MAX_TIME - _time) * all_valves_with_reward[_valve]
+
+        all_outs.append(out)
+
+    if should_print:
+        print(f"PART_ONE = {max(all_outs)}") #1617
+    return max(all_outs)
+
+all_results = solve_with_elephant()
+calculate_result(all_results, True)
