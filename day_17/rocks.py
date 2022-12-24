@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 N_ROCKS = 2022  # PART ONE
-# N_ROCKS = 1000000000000  # PART TWO
+N_ROCKS = 1000000000000  # PART TWO
 
 ROCK_1 = [['#', '#', '#', '#']]
 ROCK_2 = [['.', '#', '.'], ['#', '#', '#'], ['.', '#', '.']]
@@ -44,6 +44,9 @@ class Chamber():
         self.rock_number = 0
 
         self.saved_height = 0
+
+        self.next_stop = 0
+        self.cpy_array = None
 
     def print(self):
         for i in range(len(self.grid)):
@@ -214,6 +217,26 @@ class Chamber():
     def get_rock_count(self):
         return self.rock_number
 
+    def get_highest(self):
+        n_rows, n_cols = self.grid.shape
+
+        # Empty grid, just grow it to needed size
+        if n_rows == 0:
+            return 0
+
+        highest = None
+        for i in range(n_rows):
+            for j in range(n_cols):
+                if self.grid[i][j] != ord('.'):
+                    highest = (i, j)
+                    break
+            if highest is not None:
+                    break
+        if highest is None:
+            return 0
+        return highest[0]
+
+
     def get_height(self):
         n_rows, n_cols = self.grid.shape
 
@@ -234,8 +257,25 @@ class Chamber():
         return n_rows - highest[0]
 
     def optimize(self):
-        self.grid = self.grid[-5:]
-        self.saved_height += 5
+        self.grid = self.grid[:-50]
+        self.saved_height += 50
+
+    def check_patter(self):
+        if self.rock_number < 5:
+            return
+
+        highest = self.get_highest()
+        new_array = self.grid[highest:]
+
+        if self.cpy_array is None:
+            self.cpy_array = np.vstack((new_array, new_array))
+            self.next_stop = self.rock_number*2
+
+        if np.array_equal(new_array, self.cpy_array):
+            print(f"FOUND SOMETHING AT: {self.rock_number}")
+        else:
+            self.cpy_array = np.vstack((new_array, new_array))
+            self.next_stop = self.rock_number*2
 
 rock_counter = RockCounter()
 chamber = Chamber()
@@ -253,13 +293,15 @@ while True:
     _step = pattern_step % pattern_len
     step = line[_step]
 
-    # if chamber.get_rock_count() > 0 and (chamber.get_rock_count() % 10) == 0:
-    #     chamber.optimize()
-
     if chamber.is_rock_empty():
         # Game is finished
         if chamber.get_rock_count() == N_ROCKS:
             break
+
+        # if chamber.get_height() > 100:
+        #     chamber.optimize()
+        chamber.check_patter()
+        
         pbar.update(1)
         c_rock = rock_counter.next_rock()
         chamber.add_rock(c_rock)
@@ -278,5 +320,5 @@ while True:
 pbar.close()
 
 height = chamber.get_height()
-# height += chamber.saved_height 
+height += chamber.saved_height 
 print(f"Result = {height}")
